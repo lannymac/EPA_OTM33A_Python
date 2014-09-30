@@ -14,7 +14,12 @@ def stability_class(std_wind,turb):
     This function will return an average stability class
     based on the standard deviation of the wind speed 
     and the turbulent intensity.
+
+    INPUTS
+    std_wind :: standard deviation on the horizontal wind direction [degrees]
+    turb     :: turbulent intensity
     '''
+
     if std_wind > 27.5:
         pg_wind = 1.
     elif std_wind <=27.5 and std_wind > 23.5:
@@ -44,6 +49,8 @@ def stability_class(std_wind,turb):
         pg_turb = 6.
     elif turb <= 0.080:
         pg_turb = 7.
+
+    # average together the two estimates of stability class and round
     final_pg = int(np.round(np.mean((pg_wind,pg_turb))))
     return final_pg
 
@@ -57,6 +64,28 @@ def sigma_func(I,J,K,dist):
     
 def sigma(dist,std_wind=None,turb=None,stab= None):
     
+    '''
+    This definition will calculate the horizontal and vertical standard deviation of the emission
+    distribution. The seven custom classes are based on the Pasquill-Gifford model in the following way:
+
+    1 - PG class A
+    2 - Linear interpolation between PG classes A and B
+    3 - PG class B
+    4 - Linear interpolation between PG classes B and C
+    5 - PG class C
+    6 - Linear interpolation between PG classes C and D
+    7 - PG class D
+
+    If you manually enter a stability class (i.e. 1-7) it will over-ride the conversion of 
+    std_wind and turb into a stability class.
+
+    INPUTS
+    dist     :: distance between receptor and source
+    std_wind :: standard deviation of the horizontal wind direction [degrees]
+    turb     :: turbulent intensity
+    stab     :: stability class
+
+    '''
     if stab == None:
         stab = stability_class(std_wind,turb)
 
@@ -84,16 +113,29 @@ def sigma(dist,std_wind=None,turb=None,stab= None):
     else:
         sigma_y = np.nan
         sigma_z = np.nan
+
     return sigma_y,sigma_z
 
 def ppm2gm3(conc,mw,T,P):
+    '''
+    This definition will convert a concentration given in ppm to
+    a concentration in g/m3.
+    
+    INPUTS
+    conc :: concentration [ppb]
+    mw   :: molecular weight [g/mol]
+    T    :: temperature [K]
+    P    :: pressure [atm]
+    '''
     R = 0.082 # L atm K-1 mol-1
     mass = conc*mw
     V = (1e6*R*T)/(P*1000.)
     return mass/V
 
 def fit_plot(x,y_data,fit,name):
-    
+    '''
+    This definition will plot the actual data versus the Gaussian fit performed
+    '''
     y_fit = func(x,fit[0],fit[1],fit[2])
     
     fs=18
@@ -110,6 +152,9 @@ def fit_plot(x,y_data,fit,name):
 
 
 def print_filename(filename):
+    '''
+    This definition will print a header to the screen
+    '''
     print('+'*(len(filename)+10))
     print('+    %s    +' % (filename))
     print('+'*(len(filename)+10)+'\n')
@@ -117,12 +162,19 @@ def print_filename(filename):
 
 
 def print_screen(name,emis,emis_stp):
+    '''
+    This definition will print results from the program
+    '''
     print('%s is predicted to have an emission rate of %.3f LPM' % (name,emis))
     print('%s is predicted to have an emission rate of %.3f SLPM\n' % (name,emis_stp))
     
 
 
 def custom_load_files(filename,chemical_1,chemical_2):
+    '''
+    This is a custom file loader that I made since
+    I store my files in npz format. 
+    '''
     fuck = np.load(filename)
     tracer_1 = np.ma.array(fuck[chemical_1],mask=False)
     tracer_2 = np.ma.array(fuck[chemical_2],mask=False)/1000.

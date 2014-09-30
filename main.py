@@ -2,14 +2,19 @@ import numpy as np
 from scipy.optimize import curve_fit
 from defs import *
 import sys
-import pylab as pl
+import pylab as pl; pl.close('all')
 
-pl.close('all')
+'''
+This software is based on EPA's OTA33A Method. From concentration and wind data
+the emission rate from a point source can be estimated. This program will assume
+a point source gaussian plume to estimate the emission rate.
+'''
 
 make_plot = True
 print_2_screen = True
 
 files = ['CHRISTMAN_2014_03_14_1010_TO_1034.npz']
+d = [42.]
 
 chemical_1 = 'CH4'
 chemical_2 = 'C2H2'
@@ -21,8 +26,8 @@ theta_start = 0.
 theta_end = 360.
 delta_theta = 5.
 
-cutoff = 100.
-d = [42.]
+cutoff = 0.
+
 
 for k1 in range(len(files)):
 
