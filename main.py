@@ -1,115 +1,165 @@
 import numpy as np
 from scipy.optimize import curve_fit
-from defs import *
+import defs_for_pub as d
 import sys
 import pylab as pl; pl.close('all')
-
+import copy
 '''
 This software is based on EPA's OTA33A Method. From concentration and wind data
 the emission rate from a point source can be estimated. This program will assume
 a point source gaussian plume to estimate the emission rate.
 '''
+################
+#    INPUTS    #
+################
 
-make_plot = True
-print_2_screen = True
+make_plot      = True
 
-files = ['CHRISTMAN_2014_03_14_1010_TO_1034.npz']
-d = [42.]
+# DATA FILES AND SOURCE-RECEPTOR DISTANCE
+files = ['STR_3061611_01.xls','STR_3061611_02.xls','STR_3061611_03.xls','STR_3061611_04.xls','STR_3061611_05.xls','STR_3061611_06.xls','STR_3061611_07.xls']
+#files = ['CHRISTMAN_WYOMING_2014_03_14_1106_TO_1116.npz','CHRISTMAN_WYOMING_2014_03_14_1214_TO_1234.npz']
+distance     = [42.,51.,60.,86.,36.,60.,73.]
 
-chemical_1 = 'CH4'
-chemical_2 = 'C2H2'
+# TRACER INFORMATION
+chemical_name = 'CH4'
+mw_chemical   = 16.04 # [g mol-1]
 
-mw_chemical_1 = 16.04 # g mol-1
-mw_chemical_2 = 26.04 # g mol-1
+# BIN LIMITS
+theta_start   = 5.
+theta_end     = 360.
+delta_theta   = 10.
 
-theta_start = 0.
-theta_end = 360.
-delta_theta = 5.
+# DATA CUTOFFS
+wslimit       = 0.0 # set wind speed cut limit [m s-1]
+wdlimit       = 60.0 # set wind angle cut limit [+/- deg]. 180 indicates no filter
+cutoff        = 2.0 # bin density cutoff limit
 
-cutoff = 0.
-
+############################
+#    BEGINE CALCULATION    #
+############################
 
 for k1 in range(len(files)):
+    print('+'*(len(files[k1])+10))
+    print('+    %s    +' % (files[k1]))
+    print('+'*(len(files[k1])+10)+'\n')
 
+    # load in the data
+    #tracer,ws3,wd3,ws2,wd2,temp,pres,ws3z,time = custom_load_files(files[k1],chemical_name)
+    
+    tracer,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y,time = d.load_excel(files[k1])
 
-    tracer_1,tracer_2,lat,lon,ws3,wd3,ws2,wd2,temp,\
-        pres,ws3z,ws3x,ws3y,ws3t,time = custom_load_files(files[k1],chemical_1,chemical_2)
+    # correct wind from sonic anemometer
 
-    # convert tracers from ppm to g m-3
-    tracer_1 = ppm2gm3(tracer_1,mw_chemical_1,np.mean(temp),np.mean(pres))
-    tracer_2 = ppm2gm3(tracer_2,mw_chemical_2,np.mean(temp),np.mean(pres))
+    ws3x, ws3y, ws3z, wd3, ws3 = d.sonic_correction(ws3x,ws3y,ws3z)
 
-    # calculate mean wind speed and turbulent intensity 
-    # for use in finding the PG stability class
-    mean_wind_speed = np.mean(ws3)
-    turbulent_intensity = np.std(ws3z)/mean_wind_speed
+    # engage wind speed limit cutoff
+    if wslimit > 0.0:
+        # create a mask array where False indices are where wind speed < wslimit
+        ws_mask = np.ma.masked_less_equal(ws3,wslimit).mask
+        
+        # apply the created mask to the relevant variables
+        time.mask   = ws_mask
+        tracer.mask = ws_mask
+        ws3.mask    = ws_mask
+        wd3.mask    = ws_mask
+        ws2.mask    = ws_mask
+        wd2.mask    = ws_mask
+        temp.mask   = ws_mask
+        pres.mask   = ws_mask
+        ws3z.mask   = ws_mask
 
-    #subtract tracer background
-    tracer_1 = tracer_1 - np.percentile(tracer_1,05)
-    tracer_1[np.where(tracer_1 <0.)] = 0.
+    else:
+        # if we don't want to mask any wind speeds, we have to make sure that we 
+        # don't lose any data during the np.percentile step below
+        ws_mask = np.ones_like(tracer.mask)*False
+        
+    # subtract tracer background. I had to manually apply the mask within the percentile function
+    # because currently np.percentile does not play well with masked arrays.
+    tracer -= np.mean(tracer[np.where(tracer < np.percentile(tracer[~ws_mask],05))]) # [g m-3]
+    # there are bound to be some negative values in the tracer array now
+    # let's set them to zero now
 
-    tracer_2 = tracer_2 - np.percentile(tracer_2,05)
-    tracer_2[np.where(tracer_2 <0.)] = 0.
+    tracer[np.where(tracer <0.)] = 0.
 
-    # create bins
+    # create wind direction bins from input
     bins = np.arange(theta_start,theta_end+1,delta_theta)
 
-    # get array for which bin every measured wind speed is in
-    indices= np.digitize(wd2,bins)-1
+    # get indices for which bin every measured wind speed is in
+    indices= np.digitize(wd3[~ws_mask],bins)-1
     
     # make array of the middle of each bin; len(mid_bins) = len(bins) - 1
     mid_bins = (bins[:-1] + bins[1:])/2.
 
-    # create empty arrays to store "histograms"
-    hist_tracer_1 = np.zeros_like(mid_bins)
-    hist_tracer_2 = np.zeros_like(mid_bins)    
+    # create empty arrays to store mean concentration as a function of wind direction
+    tracer_avg = np.zeros_like(mid_bins)
 
     # for each wind direction bin, find the corresponding mean tracer concentration
     for i in range(indices.min(),indices.max()+1):
-        temp_vals = tracer_1[np.where(indices == i)]
-        if len(temp_vals) > cutoff:
-            hist_tracer_1[i] = temp_vals.mean()
+        temp_vals = tracer[~ws_mask][np.where(indices == i)]
 
-        temp_vals = tracer_2[np.where(indices == i)]
-        if len(temp_vals) > cutoff:
-            hist_tracer_2[i] = temp_vals.mean()
-        
+        # ensure that the amount of data points exceeds the cutoff value
+        # we don't want bins with a couple of values to dominate the "gaussian" curve
+        if len(temp_vals) > int(cutoff*len(tracer)/100.):
+            tracer_avg[i] = temp_vals.mean()
+
     # ensure that the peak concentration is around 180 degrees for fitting
-    roll_amount_1 = int(len(hist_tracer_1)/2. -1) - np.where(hist_tracer_1 == hist_tracer_1.max())[0][0]
-    roll_amount_2 = int(len(hist_tracer_2)/2. -1) - np.where(hist_tracer_2 == hist_tracer_2.max())[0][0]
+    roll_amount = int(len(tracer_avg)/2. -1) - np.where(tracer_avg == tracer_avg.max())[0][0]
+    tracer_avg = np.roll(tracer_avg,roll_amount)
 
-    hist_tracer_1 = np.roll(hist_tracer_1,roll_amount_1)
-    hist_tracer_2 = np.roll(hist_tracer_2,roll_amount_2)
+    max_bin = mid_bins[np.where(tracer_avg == tracer_avg.max())[0][0]-1]
+    bin_cut_lo = max_bin - wdlimit
+    bin_cut_hi = max_bin + wdlimit
+
+    #tracer_avg[np.where((mid_bins > bin_cut_hi) | (mid_bins < bin_cut_lo))] = 0.
+    wd3 = wd3 + (roll_amount-1)*delta_theta
+    wd3 = d.wrap(wd3)
+    wd3[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
+
+    wd2[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
+
+    ws3[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
+    ws3z[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
+    
+    temp[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
+    pres[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
 
     # fitting procedure
-    const_0 = [tracer_1.max(),24,180]
-    fit_tracer_1,cov_tracer_1 = curve_fit(func,mid_bins,hist_tracer_1,p0 = const_0)
-    if make_plot: fit_plot(mid_bins,hist_tracer_1,fit_tracer_1,chemical_1)
+    # here are some initial guesses that produce good results
+    const_0 = [tracer_avg.max(),24,180]
+    
+    # the curve fit function uses the Levenberg-Marquardt algorithm which
+    # in my opionion does a great job
+    fit_tracer,cov_tracer = curve_fit(d.gaussian_func,mid_bins,tracer_avg,p0 = const_0) # fit coefficients
+    if make_plot: d.fit_plot(mid_bins,tracer_avg,fit_tracer,chemical_name) # make plot if you want
 
-    const_0 = [tracer_2.max(),24,180]
-    fit_tracer_2,cov_tracer_2 = curve_fit(func,mid_bins,hist_tracer_2,p0 = const_0)
-    if make_plot: fit_plot(mid_bins,hist_tracer_2,fit_tracer_2,chemical_2)
+    # calculate the standard deviation of wind direction and turbulent intensity 
+    # for use in finding the PG stability class
+    turbulent_intensity = np.std(ws3z)/np.mean(ws3) # turbulent intensity
+    std_wind_dir = d.yamartino_method(wd2) # st. dev. of wind direction [deg]
 
     # calcualte the vertical and horizontal dispersion of the gaussian plume
     # using PGT stability classes
-    sy, sz = sigma(d[k1],std_wind = np.std(wd3),turb = turbulent_intensity)
+    sy, sz = d.sigma(distance[k1],std_wind = std_wind_dir,turb = turbulent_intensity,tables=True,stab=None) # [m]
 
-    # calculate the density of the tracers using the ideal gas law
-    R = 0.082 # L atm K-1 mol-1
-    rho_tracer_1_stp = (1.*mw_chemical_1)/(R*298.)
-    rho_tracer_2_stp = (1.*mw_chemical_2)/(R*298.)
+    # convert tracers from ppm to g m-3
+    fit_amplitude = d.ppm2gm3(fit_tracer[0],mw_chemical,np.mean(temp),np.mean(pres))
 
-    rho_tracer_1 = (np.mean(pres)*mw_chemical_1)/(R*np.mean(temp))
-    rho_tracer_2 = (np.mean(pres)*mw_chemical_2)/(R*np.mean(temp))
+    # calculate the density of the tracers using the ideal gas law for conversion back to L/min if desired
     
-    # putting it all together to calculate the emission rate in L/min
-    emission_tracer_1 = 2*np.pi*fit_tracer_1[0]*mean_wind_speed*sy*sz/rho_tracer_1*60
-    emission_tracer_2 = 2*np.pi*fit_tracer_2[0]*mean_wind_speed*sy*sz/rho_tracer_2*60
+    rho_tracer_stp = (d.P_stp*mw_chemical)/(d.R*d.T_stp) # density of gas at STP [g L-1]
+    rho_tracer = (np.mean(pres)*mw_chemical)/(d.R*np.mean(temp)) # density of gas at ambient conditions [g L-1]
+   
+    # putting it all together to calculate the emission rate in g/s
+    emission_tracer_mass_per_time = 2*np.pi*fit_amplitude*np.mean(ws3)*sy*sz # [g s-1]
+
+    # now calculate the emission rate in L/min
+    emission_tracer_volume_per_time = 2*np.pi*fit_amplitude*np.mean(ws3)*sy*sz/rho_tracer*60 # [L min-1]
 
     # now L/min at STP
-    emission_tracer_1_stp = 2*np.pi*fit_tracer_1[0]*mean_wind_speed*sy*sz/rho_tracer_1_stp*60
-    emission_tracer_2_stp = 2*np.pi*fit_tracer_2[0]*mean_wind_speed*sy*sz/rho_tracer_2_stp*60
+    emission_tracer_volume_per_time_stp = 2*np.pi*fit_amplitude*np.mean(ws3)*sy*sz/rho_tracer_stp*60 # [L min-1]
 
-    if print_2_screen: print_filename(files[k1]); \
-       print_screen(chemical_1,emission_tracer_1,emission_tracer_1_stp); \
-       print_screen(chemical_2,emission_tracer_2,emission_tracer_2_stp)
+    # let us finally print our results to the screen
+    print('%s is predicted to have an emission rate of:\n' % (chemical_name))
+    print('\t%.3f g/s' % (emission_tracer_mass_per_time))
+    print('\t%.3f LPM' % (emission_tracer_volume_per_time))
+    print('\t%.3f SLPM\n' % (emission_tracer_volume_per_time_stp))
