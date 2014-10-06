@@ -35,7 +35,7 @@ wdlimit       = 60.0 # set wind angle cut limit [+/- deg]. 180 indicates no filt
 cutoff        = 2.0 # bin density cutoff limit
 
 ############################
-#    BEGINE CALCULATION    #
+#    BEGIN CALCULATION     #
 ############################
 
 for k1 in range(len(files)):
