@@ -1,13 +1,14 @@
 import numpy as np
 from scipy.optimize import curve_fit
-import defs_for_pub as d
-import sys
+import defs as d
 import pylab as pl; pl.close('all')
-import copy
 '''
-This software is based on EPA's OTA33A Method. From concentration and wind data
-the emission rate from a point source can be estimated. This program will assume
-a point source gaussian plume to estimate the emission rate.
+This software uses EPA's OTA33A Method. From concentration and wind data
+the emission rate from a point source can be estimated.
+
+Any functions that begin with the prefix "d.", information can be found
+within the defs.py file.
+
 '''
 ################
 #    INPUTS    #
@@ -16,9 +17,8 @@ a point source gaussian plume to estimate the emission rate.
 make_plot      = True
 
 # DATA FILES AND SOURCE-RECEPTOR DISTANCE
-files = ['STR_3061611_01.xls','STR_3061611_02.xls','STR_3061611_03.xls','STR_3061611_04.xls','STR_3061611_05.xls','STR_3061611_06.xls','STR_3061611_07.xls']
-#files = ['CHRISTMAN_WYOMING_2014_03_14_1106_TO_1116.npz','CHRISTMAN_WYOMING_2014_03_14_1214_TO_1234.npz']
-distance     = [42.,51.,60.,86.,36.,60.,73.]
+files = ['STR_3061611_01.xls']
+distance     = [42.]
 
 # TRACER INFORMATION
 chemical_name = 'CH4'
@@ -44,12 +44,9 @@ for k1 in range(len(files)):
     print('+'*(len(files[k1])+10)+'\n')
 
     # load in the data
-    #tracer,ws3,wd3,ws2,wd2,temp,pres,ws3z,time = custom_load_files(files[k1],chemical_name)
-    
     tracer,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y,time = d.load_excel(files[k1])
 
     # correct wind from sonic anemometer
-
     ws3x, ws3y, ws3z, wd3, ws3 = d.sonic_correction(ws3x,ws3y,ws3z)
 
     # engage wind speed limit cutoff
@@ -105,23 +102,31 @@ for k1 in range(len(files)):
     # ensure that the peak concentration is around 180 degrees for fitting
     roll_amount = int(len(tracer_avg)/2. -1) - np.where(tracer_avg == tracer_avg.max())[0][0]
     tracer_avg = np.roll(tracer_avg,roll_amount)
-
+    
+    # get the bin with peak average concentration
     max_bin = mid_bins[np.where(tracer_avg == tracer_avg.max())[0][0]-1]
+    
+    # calculate wind direction cut off based on input value
     bin_cut_lo = max_bin - wdlimit
     bin_cut_hi = max_bin + wdlimit
 
-    #tracer_avg[np.where((mid_bins > bin_cut_hi) | (mid_bins < bin_cut_lo))] = 0.
+    # add the roll amount to wind direction to correspond correctly to the
+    # average concentration array
     wd3 = wd3 + (roll_amount-1)*delta_theta
+
+    # ensure that wind direction is within 0 to 360
     wd3 = d.wrap(wd3)
-    wd3[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
 
-    wd2[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
+    # get the indices of where wd3 is outside of wind direction limit
+    wd_mask = np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))
 
-    ws3[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
-    ws3z[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
-    
-    temp[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
-    pres[np.where((wd3 > bin_cut_hi) | (wd3 < bin_cut_lo))] = np.ma.masked
+    # mask arrays where wd3 is outside of wind direction cutoff
+    wd3[wd_mask] = np.ma.masked
+    wd2[wd_mask] = np.ma.masked
+    ws3[wd_mask] = np.ma.masked
+    ws3z[wd_mask] = np.ma.masked
+    temp[wd_mask] = np.ma.masked
+    pres[wd_mask] = np.ma.masked
 
     # fitting procedure
     # here are some initial guesses that produce good results
@@ -145,7 +150,6 @@ for k1 in range(len(files)):
     fit_amplitude = d.ppm2gm3(fit_tracer[0],mw_chemical,np.mean(temp),np.mean(pres))
 
     # calculate the density of the tracers using the ideal gas law for conversion back to L/min if desired
-    
     rho_tracer_stp = (d.P_stp*mw_chemical)/(d.R*d.T_stp) # density of gas at STP [g L-1]
     rho_tracer = (np.mean(pres)*mw_chemical)/(d.R*np.mean(temp)) # density of gas at ambient conditions [g L-1]
    
