@@ -264,3 +264,25 @@ def sonic_correction(u,v,w):
     return u_rot2,v_rot,w_rot, wd3, ws3
 
 
+def custom_load_files(filename,chemical):
+    '''
+    This is a custom file loader that I made since
+    I store my files in npz format. 
+    '''
+    fuck = np.load(filename)
+    tracer = np.ma.array(fuck[chemical],mask=False)
+    lat = np.ma.array(fuck['lat'],mask=False)
+    lon = np.ma.array(fuck['lon'],mask=False)
+    ws3 = np.ma.array(fuck['ws3'],mask=False)
+    wd3 = np.ma.array(fuck['wd3'],mask=False)
+    ws2 = np.ma.array(fuck['ws2'],mask=False)
+    wd2 = np.ma.array(fuck['wd2'],mask=False)
+    temp = np.ma.array(fuck['temp'],mask=False)+273.
+    pres = np.ma.array(fuck['pres'],mask=False)/1000.
+    ws3z = np.ma.array(fuck['ws3z'],mask=False)
+    ws3x = np.ma.array(fuck['ws3x'],mask=False)
+    ws3y = np.ma.array(fuck['ws3y'],mask=False)
+    ws3t = np.ma.array(fuck['ws3t'],mask=False)
+    time = np.ma.array(fuck['time'],mask=False)
+    
+    return tracer,lat,lon,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y,ws3t,time

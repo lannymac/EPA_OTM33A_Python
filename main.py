@@ -17,35 +17,40 @@ within the defs.py file.
 make_plot      = True
 
 # DATA FILES AND SOURCE-RECEPTOR DISTANCE
-files = ['STR_3061611_01.xls']
-distance     = [42.]
+files = ['Christman_20140919/CHRISTMAN_2014_09_19_measurement_%d.npz'% (k) for k in range(1,10)]
+
+
+distance     = [45,75,75,75,175,175,175,150,75]
+actual_flow_rate = [5,7.5,7.5,10,5,7.5,7.5,7.5,2.5]
+
 
 # TRACER INFORMATION
 chemical_name = 'CH4'
 mw_chemical   = 16.04 # [g mol-1]
-
+#mw_chemical   = 26.04
 # BIN LIMITS
-theta_start   = 5.
+theta_start   = 0.
 theta_end     = 360.
 delta_theta   = 10.
 
 # DATA CUTOFFS
 wslimit       = 0.0 # set wind speed cut limit [m s-1]
 wdlimit       = 60.0 # set wind angle cut limit [+/- deg]. 180 indicates no filter
-cutoff        = 2.0 # bin density cutoff limit
+cutoff        = 2 # bin density cutoff limit
 
 ############################
 #    BEGIN CALCULATION     #
 ############################
-
+pd = np.zeros((len(files)))
+cc = np.zeros((len(files)))
 for k1 in range(len(files)):
     print('+'*(len(files[k1])+10))
     print('+    %s    +' % (files[k1]))
     print('+'*(len(files[k1])+10)+'\n')
 
     # load in the data
-    tracer,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y,time = d.load_excel(files[k1])
-
+    #tracer,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y,time = d.load_excel(files[k1])
+    tracer,lat,lon,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y,ws3t,time = d.custom_load_files(files[k1],chemical_name)
     # correct wind from sonic anemometer
     ws3x, ws3y, ws3z, wd3, ws3 = d.sonic_correction(ws3x,ws3y,ws3z)
 
@@ -72,7 +77,7 @@ for k1 in range(len(files)):
         
     # subtract tracer background. I had to manually apply the mask within the percentile function
     # because currently np.percentile does not play well with masked arrays.
-    tracer -= np.mean(tracer[np.where(tracer < np.percentile(tracer[~ws_mask],05))]) # [g m-3]
+    tracer -= np.mean(tracer[np.where(tracer < np.percentile(tracer[~ws_mask],5))]) # [g m-3]
     # there are bound to be some negative values in the tracer array now
     # let's set them to zero now
 
@@ -167,3 +172,26 @@ for k1 in range(len(files)):
     print('\t%.3f g/s' % (emission_tracer_mass_per_time))
     print('\t%.3f LPM' % (emission_tracer_volume_per_time))
     print('\t%.3f SLPM\n' % (emission_tracer_volume_per_time_stp))
+    pd[k1] = (emission_tracer_volume_per_time_stp - actual_flow_rate[k1])/actual_flow_rate[k1]*100.
+    print('\t%.3f percent difference' % (pd[k1]))
+    
+
+    cc[k1] = np.corrcoef(tracer_avg,d.gaussian_func(mid_bins,fit_tracer[0],fit_tracer[1],fit_tracer[2]))[0][1]**2
+    print('\tR^2 = %.3f' % (cc[k1]))
+
+
+fig=pl.figure()
+ax=fig.add_subplot(111)
+ax.scatter(cc,pd,s=40)
+
+rangex = np.diff((ax.get_xlim()))
+rangey = np.diff((ax.get_ylim()))
+
+for i in range(len(files)):
+    ax.text(cc[i]+.01*rangex,pd[i]+.01*rangey,'%d' % (i+1))
+pl.axis('tight')
+ax.plot(ax.get_xlim(),[0,0],'--',c='k',lw=2)
+ax.set_xlabel('R$^{2}$',fontsize=18)
+ax.set_ylabel('Percent Difference',fontsize=18)
+pl.axis('tight')
+pl.show()
