@@ -22,7 +22,7 @@ only provide a function to perform the data analysis.
 make_plot      = True
 
 # DATA FILES AND SOURCE-RECEPTOR DISTANCE
-ch4,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x,time = d.load_excel('STR_3061611_01.xls')
+ch4,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x,time = d.load_excel('STR_9060512_03.xlsx')
 
 distance = 42. # meters
 

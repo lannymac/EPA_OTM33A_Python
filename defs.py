@@ -139,17 +139,21 @@ def fit_plot(x,y_data,fit,name):
     fit    :: the fit coefficients for a gaussian function
     name   :: this string will be made the title
     '''
-    y_fit = gaussian_func(x,fit[0],fit[1],fit[2])
+    xAnalytic = np.linspace(x.min(),x.max(),1000)
+    y_fit = gaussian_func(xAnalytic,fit[0],fit[1],fit[2])
+
+    R = np.corrcoef(y_data,gaussian_func(x,fit[0],fit[1],fit[2]))[0,1]
     
     fs=18
     fig = pl.figure()
     ax = fig.add_subplot(111)
-    ax.plot(x,y_data,c='k',label='Data',lw=2)
-    ax.plot(x,y_fit,c='r',label='Fit',lw=2)    
+    ax.plot(x,y_data,'o',c='k',label='Data',lw=2)
+    ax.plot(xAnalytic,y_fit,c='r',label='Fit',lw=2)    
     ax.set_xlabel('Wind Direction [degrees]',fontsize=fs)
     ax.set_ylabel('Average concentration [ppm]',fontsize=fs)
     ax.set_title(name,fontsize=fs+2)
     ax.set_xlim(0,360)
+    ax.text(np.diff(ax.get_xlim())*.05+ax.get_xlim()[0],np.diff(ax.get_ylim())*.8+ax.get_ylim()[0],'a = %.2f\nsigma = %.2f\nR = %.4f' % (fit[0],fit[1],R),color='r',fontsize=18)
     leg=ax.legend(fontsize=fs)
     leg.get_frame().set_alpha(0.)
     pl.show()
@@ -161,7 +165,7 @@ def load_excel(filename):
     Ideally when using this program, the user will create their own small script
     to properly read in their data.
     '''
-    n1=53 # Remove sampling time deplay of concetration and Sonic
+    n1=12 # Remove sampling time deplay of concetration and Sonic
 
     workbook = xlrd.open_workbook(filename) # load Excel file
     sheet = workbook.sheet_by_index(0) # use the first sheet in the file
@@ -349,10 +353,10 @@ def OTA33A(gasConc,temp,pres,ws3z,ws3x,ws3y,time,wslimit,wdlimit,cutoff,distance
     # subtract tracer background. I had to manually apply the mask within the percentile function
     # because currently np.percentile does not play well with masked arrays.
     gasConc -= np.mean(gasConc[np.where(gasConc < np.percentile(gasConc[~ws_mask],5))]) # [g m-3]
+
     # there are bound to be some negative values in the tracer array now
     # let's set them to zero now
-
-    gasConc[np.where(gasConc <0.)] = 0.
+#    gasConc[np.where(gasConc <0.)] = 0.
 
     # create wind direction bins from input
     bins = np.arange(theta_start,theta_end+delta_theta,delta_theta)
@@ -377,7 +381,7 @@ def OTA33A(gasConc,temp,pres,ws3z,ws3x,ws3y,time,wslimit,wdlimit,cutoff,distance
             gasConc_avg[i] = temp_vals.mean()
 
     # ensure that the peak concentration is around 180 degrees for fitting
-    roll_amount = int(len(gasConc_avg)/2. -3) - np.argmin(abs(gasConc_avg - np.average(wd3[~ws_mask],weights=gasConc[~ws_mask])))#np.where(tracer_avg == tracer_avg.max())[0][0]
+    roll_amount = int(len(gasConc_avg)/2. -2) - np.argmin(abs(gasConc_avg - np.average(wd3[~ws_mask],weights=gasConc[~ws_mask])))#np.where(tracer_avg == tracer_avg.max())[0][0]
     gasConc_avg = np.roll(gasConc_avg,roll_amount)
     
     # get the bin with peak average concentration
@@ -412,7 +416,6 @@ def OTA33A(gasConc,temp,pres,ws3z,ws3x,ws3y,time,wslimit,wdlimit,cutoff,distance
     # in my opionion does a great job
     fit_gasConc,cov_gasConc = curve_fit(gaussian_func,mid_bins,gasConc_avg,p0 = const_0) # fit coefficients
     if make_plot: fit_plot(mid_bins,gasConc_avg,fit_gasConc,chemical_name) # make plot if you want
-
     # calculate the standard deviation of wind direction and turbulent intensity 
     # for use in finding the PG stability class
     turbulent_intensity = np.std(ws3z)/np.mean(ws3) # turbulent intensity
