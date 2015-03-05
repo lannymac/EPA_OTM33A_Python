@@ -354,10 +354,6 @@ def OTA33A(gasConc,temp,pres,ws3z,ws3x,ws3y,time,wslimit,wdlimit,cutoff,distance
     # because currently np.percentile does not play well with masked arrays.
     gasConc -= np.mean(gasConc[np.where(gasConc < np.percentile(gasConc[~ws_mask],5))]) # [g m-3]
 
-    # there are bound to be some negative values in the tracer array now
-    # let's set them to zero now
-#    gasConc[np.where(gasConc <0.)] = 0.
-
     # create wind direction bins from input
     bins = np.arange(theta_start,theta_end+delta_theta,delta_theta)
 
