@@ -21,10 +21,13 @@ only provide a function to perform the data analysis.
 # WOULD YOU LIKE TO SEE A PLOT?
 make_plot      = True
 
-# DATA FILES AND SOURCE-RECEPTOR DISTANCE
-ch4,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x,time = d.load_excel('STR_9060512_03.xlsx')
 
-distance = 42. # meters
+# DATA FILES AND SOURCE-RECEPTOR DISTANCE
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x = d.load_excel('STR_6061411_01.xls',n1=40,gasCalibration=1.0); distance=81.
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_02.xlsx',n1=12,gasCalibration=1.02); distance = 49.
+gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x = d.load_excel('STR_9060512_11.xlsx',n1=12,gasCalibration=1.02); distance = 19.
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x = d.load_csv('STR_6061411_03.csv',n1=12,gasCalibration=1.02); distance = 19.
+
 
 # TRACER INFORMATION
 chemical_name = 'CH4' # for plots
@@ -38,15 +41,15 @@ delta_theta   = 10.
 # DATA CUTOFFS
 wslimit       = 0.0 # set wind speed cut limit [m s-1]
 wdlimit       = 60.0 # set wind angle cut limit [+/- deg]. 180 indicates no filter
-cutoff        = 2 # bin density cutoff limit
+cutoff        = 2. # bin density cutoff limit
 
 ############################
 #    BEGIN CALCULATION     #
 ############################
 
-volumeRate, massRate = d.OTA33A(ch4,temp,pres,ws3z,ws3x,ws3y,time,wslimit,wdlimit,cutoff,distance,theta_start,theta_end,delta_theta,mw_chemical,chemical_name,make_plot=make_plot)
+massRate, volumeRate = d.OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,distance,theta_start,theta_end,delta_theta,mw_chemical,chemical_name,make_plot=False)
 
-# let us  print our results to the screen
+# Let us  print our results to the screen
 print('%s is predicted to have an emission rate of:\n' % (chemical_name))
 print('\t%.3f g/s' % (massRate))
 print('\t%.3f SLPM' % (volumeRate))
