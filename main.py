@@ -23,10 +23,20 @@ make_plot      = True
 
 
 # DATA FILES AND SOURCE-RECEPTOR DISTANCE
-#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x = d.load_excel('STR_6061411_01.xls',n1=40,gasCalibration=1.0); distance=81.
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_6061411_01.xls',n1=40,gasCalibration=1.0); distance=81.
+
 #gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_02.xlsx',n1=12,gasCalibration=1.02); distance = 49.
-gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x = d.load_excel('STR_9060512_11.xlsx',n1=12,gasCalibration=1.02); distance = 19.
-#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3y,ws3x = d.load_csv('STR_6061411_03.csv',n1=12,gasCalibration=1.02); distance = 19.
+gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_11.xlsx',n1=12,gasCalibration=1.02); distance = 19.
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_csv('STR_6061411_03.csv',n1=40,gasCalibration=1.); distance = 97.8
+
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_5050611_01.xls',n1=40,gasCalibration=1); distance = 87.76;
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_5050611_03.xls',n1=40,gasCalibration=1); distance = 98.4;
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_04.xlsx',n1=12,gasCalibration=1.02); distance = 49;
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_05.xlsx',n1=12,gasCalibration=1.02); distance = 49;
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_10071112_02.xlsx',n1=10,gasCalibration=1.02); distance = 106;
+
+
+
 
 
 # TRACER INFORMATION
@@ -47,7 +57,7 @@ cutoff        = 2. # bin density cutoff limit
 #    BEGIN CALCULATION     #
 ############################
 
-massRate, volumeRate = d.OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,distance,theta_start,theta_end,delta_theta,mw_chemical,chemical_name,make_plot=False)
+massRate, volumeRate = d.OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,distance,theta_start,theta_end,delta_theta,mw_chemical,chemical_name,make_plot=make_plot)
 
 # Let us  print our results to the screen
 print('%s is predicted to have an emission rate of:\n' % (chemical_name))

@@ -244,7 +244,6 @@ def yamartino_method(wd):
     ca = np.mean(np.cos(wd*np.pi/180))
 
     epsilon = np.sqrt(1 - (sa**2 + ca**2))
-
     std_wd = np.sqrt(n/(n-1))*np.arcsin(epsilon)*(1 + (2./np.sqrt(3) - 1)*epsilon**3)
 
     return std_wd*180/np.pi
@@ -271,21 +270,18 @@ def sonic_correction(u,v,w):
     If mean direction is in N hemispehre, rotation sets to 0 deg (warning)
     Output <x>, <z>, = 0 or check file
     '''
+
     mdir = 180 + (np.arctan2(-1*(np.mean(v)),-1*(np.mean(u)))*180/np.pi)
 
     RA = np.arctan(np.mean(v)/np.mean(u)) # First rotation (set <x> = 0)
 
     CRA = np.cos(RA)
     SRA = np.sin(RA)
-    
+
     u_rot = u*CRA + v*SRA
     v_rot = -u*SRA + v*CRA
     
-    
-
     mndir = 180 + (np.arctan2(-1*(np.mean(v_rot)),-1*(np.mean(u_rot)))*180/np.pi)
-
-    
     RB = np.arctan(np.mean(w)/np.mean(u_rot)) # Second rotation (set <z> = 0)
 
     CRB = np.cos(RB)
@@ -302,7 +298,6 @@ def sonic_correction(u,v,w):
 
     # calculate and asign new 3D sonic 2D wind direction
     wd3 = 180+(np.arctan2(-1*(v_rot),-1*(u_rot2))*180/np.pi)
-
     # calculate and asign new 3D sonic 2D wind speed
     ws3 = np.sqrt(u_rot2**2 + v_rot**2)
 
@@ -323,7 +318,7 @@ def custom_load_files(filename,chemical):
     ws2 = np.ma.array(a['ws2'],mask=False)
     wd2 = np.ma.array(a['wd2'],mask=False)
     temp = np.ma.array(a['temp'],mask=False)+273.
-    pres = np.ma.array(a['pres'],mask=False)/1000.
+    pres = np.ma.array(a['pres'],mask=False)/1013.25
     ws3z = np.ma.array(a['ws3z'],mask=False)
     ws3x = np.ma.array(a['ws3x'],mask=False)
     ws3y = np.ma.array(a['ws3y'],mask=False)
@@ -397,6 +392,9 @@ def OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,dista
     bins = np.arange(theta_start,theta_end+delta_theta/2.,delta_theta)
 
     # get indices for which bin every measured wind speed is in
+
+#    m=355
+#    tempMask = np.where((wd3 < m+wdlimit ) & (wd3 > m - wdlimit))
     indices= np.digitize(wd3[:],bins)-1
 
     # make array of the middle of each bin; len(mid_bins) = len(bins) - 1
@@ -412,30 +410,30 @@ def OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,dista
         # ensure that the amount of data points exceeds the cutoff value
         # we don't want bins with a couple of values to dominate the fitting
         #print(mid_bins[i],len(temp_vals),temp_vals.mean())
-        if len(temp_vals) >np.ceil(cutoff*len(gasConc[:])/100.)+1:
+        if len(temp_vals) >np.ceil(cutoff*len(gasConc[:])/100.):
             gasConc_avg[i] = temp_vals.mean()
-
+    print gasConc_avg
     # get the bin with peak average concentration
-    max_bin = mid_bins[np.where(gasConc_avg == gasConc_avg.max())[0][0]+1] - delta_theta/2.
+    max_bin = mid_bins[np.where(gasConc_avg == gasConc_avg.max())[0][0]]# - delta_theta/2.
 
     # calculate wind direction cut off based on input value
-    bin_cut_lo = max_bin - wdlimit
-    bin_cut_hi = max_bin + wdlimit
+    bin_cut_lo = max_bin - wdlimit + delta_theta/2.
+    bin_cut_hi = max_bin + wdlimit - delta_theta/2.
 
     # mask values that are not within wind direction range
-    wd3[np.where((wd3 < bin_cut_lo) | (wd3 > bin_cut_hi))] = np.ma.masked
+    wd3[np.where((wd3 <= bin_cut_lo) | (wd3 >= bin_cut_hi))] = np.ma.masked
     wd3_mask = wd3.mask
 
     # ensure that the peak concentration is around 180 degrees for fitting
-    roll_amount = int(len(gasConc_avg)/2. -1) - np.argmin(abs(gasConc_avg - np.average(wd3[:],weights=gasConc[:])))
+    roll_amount = int(len(gasConc_avg)/2.-1) - np.argmin(abs(gasConc_avg - np.average(wd3[:],weights=gasConc[:])))
     gasConc_avg = np.roll(gasConc_avg,roll_amount)
 
     # grab the max bin after rolling just incase it's not exactly 180
     max_bin2 = mid_bins[np.where(gasConc_avg == gasConc_avg.max())[0][0]]
 
     # make new bin cutoffs just for fitting.
-    bin_cut_lo2 = max_bin2 - wdlimit
-    bin_cut_hi2 = max_bin2 + wdlimit
+    bin_cut_lo2 = max_bin2 - wdlimit + delta_theta/2.
+    bin_cut_hi2 = max_bin2 + wdlimit - delta_theta/2.
 
     # fitting procedure
     # here are some initial guesses that produce good results
@@ -447,13 +445,14 @@ def OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,dista
     # the curve fit function uses the Levenberg-Marquardt algorithm which
     # in my opionion does a great job
     fit_gasConc,cov_gasConc = curve_fit(gaussian_func,mid_bins,gasConc_avg,p0 = const_0) # fit coefficients
+
     if make_plot: fit_plot(mid_bins,gasConc_avg,fit_gasConc,chemical_name) # make plot if you want
 
     # calculate the standard deviation of wind direction and turbulent intensity 
     # for use in finding the PG stability class
     turbulent_intensity = np.std(ws3z[~wd3_mask])/np.mean(ws3[~wd3_mask]) # turbulent intensity
     std_wind_dir = yamartino_method(wd2[~wd3_mask]) # st. dev. of wind direction [deg]
-
+    print std_wind_dir, turbulent_intensity
     # calcualte the vertical and horizontal dispersion of the gaussian plume
     # using PGT stabiliy classes
     sy, sz = sigma(distance,std_wind = std_wind_dir,turb = turbulent_intensity,tables=True,stab=None) # [m]
