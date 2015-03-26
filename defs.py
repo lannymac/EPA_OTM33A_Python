@@ -412,7 +412,7 @@ def OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,dista
         #print(mid_bins[i],len(temp_vals),temp_vals.mean())
         if len(temp_vals) >np.ceil(cutoff*len(gasConc[:])/100.):
             gasConc_avg[i] = temp_vals.mean()
-    print gasConc_avg
+
     # get the bin with peak average concentration
     max_bin = mid_bins[np.where(gasConc_avg == gasConc_avg.max())[0][0]]# - delta_theta/2.
 
@@ -452,7 +452,7 @@ def OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,dista
     # for use in finding the PG stability class
     turbulent_intensity = np.std(ws3z[~wd3_mask])/np.mean(ws3[~wd3_mask]) # turbulent intensity
     std_wind_dir = yamartino_method(wd2[~wd3_mask]) # st. dev. of wind direction [deg]
-    print std_wind_dir, turbulent_intensity
+
     # calcualte the vertical and horizontal dispersion of the gaussian plume
     # using PGT stabiliy classes
     sy, sz = sigma(distance,std_wind = std_wind_dir,turb = turbulent_intensity,tables=True,stab=None) # [m]
