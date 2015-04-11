@@ -95,11 +95,11 @@ def sigma(dist,std_wind=None,turb=None,stab= None,tables=False,v=False):
     '''
     if stab == None:
         stab = stability_class(std_wind,turb,v=v)
-    file_y = np.load('pgtabley.npz')
+    file_y = np.load('ota33a/pgtabley.npz')
     pgtabley = file_y['data']
     sigma_y = pgtabley[round(dist)-1,stab-1]
 
-    file_y = np.load('pgtablez.npz')
+    file_y = np.load('ota33a/pgtablez.npz')
     pgtablez = file_y['data']
     sigma_z = pgtablez[round(dist)-1,stab-1]
 
