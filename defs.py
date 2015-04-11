@@ -395,7 +395,7 @@ def OTA33A(gasConc,temp,pres,ws2,wd2,ws3z,ws3x,ws3y,wslimit,wdlimit,cutoff,dista
 
 #    m=355
 #    tempMask = np.where((wd3 < m+wdlimit ) & (wd3 > m - wdlimit))
-    indices= np.digitize(wd3[:],bins)-1
+    indices= np.digitize(wd2[:],bins)-1
 
     # make array of the middle of each bin; len(mid_bins) = len(bins) - 1
     mid_bins = (bins[:-1] + bins[1:])/2.

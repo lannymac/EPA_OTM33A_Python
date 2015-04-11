@@ -26,7 +26,7 @@ make_plot      = True
 #gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_6061411_01.xls',n1=40,gasCalibration=1.0); distance=81.
 
 #gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_02.xlsx',n1=12,gasCalibration=1.02); distance = 49.
-gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_11.xlsx',n1=12,gasCalibration=1.02); distance = 19.
+#gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_11.xlsx',n1=12,gasCalibration=1.02); distance = 19.
 #gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_csv('STR_6061411_03.csv',n1=40,gasCalibration=1.); distance = 97.8
 
 #gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_5050611_01.xls',n1=40,gasCalibration=1); distance = 87.76;
@@ -35,7 +35,7 @@ gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_11.
 #gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_9060512_05.xlsx',n1=12,gasCalibration=1.02); distance = 49;
 #gasConc,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y = d.load_excel('STR_10071112_02.xlsx',n1=10,gasCalibration=1.02); distance = 106;
 
-
+gasConc,lat,lon,ws3,wd3,ws2,wd2,temp,pres,ws3z,ws3x,ws3y,ws3t,time = d.custom_load_files('CHRISTMAN_2014_03_14_1010_TO_1034.npz','CH4')
 
 
 
